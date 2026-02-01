@@ -6,6 +6,12 @@ on:
   pull_request:
     branches: [ main, master ]
 
+permissions:
+  contents: read
+  checks: write
+  pull-requests: write
+  statuses: write
+
 jobs:
   build:
     name: Build
@@ -355,7 +361,7 @@ jobs:
         echo "---" >> $GITHUB_STEP_SUMMARY
         echo "### 📦 Available Artifacts" >> $GITHUB_STEP_SUMMARY
         echo "- **test-results-xml** - Raw XML test reports" >> $GITHUB_STEP_SUMMARY
-        echo "- **test-results-html-report** - Beautiful HTML test report" >> $GITHUB_STEP_SUMMARY
+        echo "- **test-results-html-report** - Beautiful HTML test report (open index.html)" >> $GITHUB_STEP_SUMMARY
         echo "- **test-logs** - Complete test logs" >> $GITHUB_STEP_SUMMARY
         echo "- **complete-test-package** - All test artifacts in one package" >> $GITHUB_STEP_SUMMARY
         echo "- **scala-build-artifacts** - Compiled JAR files" >> $GITHUB_STEP_SUMMARY
