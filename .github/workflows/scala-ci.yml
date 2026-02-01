@@ -19,11 +19,47 @@ jobs:
       with:
         java-version: '11'
         distribution: 'temurin'
-        cache: 'sbt'
+    
+    - name: Install SBT
+      run: |
+        echo "deb https://repo.scala-sbt.org/scalasbt/debian all main" | sudo tee /etc/apt/sources.list.d/sbt.list
+        echo "deb https://repo.scala-sbt.org/scalasbt/debian /" | sudo tee /etc/apt/sources.list.d/sbt_old.list
+        curl -sL "https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x2EE0EA64E40A89B84B2DF73499E82A75642AC823" | sudo apt-key add
+        sudo apt-get update
+        sudo apt-get install -y sbt
+        sbt sbtVersion
+    
+    - name: Show project structure
+      run: |
+        echo "=== Current directory ==="
+        pwd
+        echo ""
+        echo "=== Repository structure ==="
+        find . -type f -name "*.scala" -o -name "*.sbt" -o -name "*.properties" | head -20
+        echo ""
+        echo "=== Checking for build.sbt ==="
+        ls -la build.sbt || echo "build.sbt NOT FOUND!"
+        echo ""
+        echo "=== Checking for source files ==="
+        ls -la src/main/scala/com/example/*.scala || echo "Source files NOT FOUND!"
+        echo ""
+        echo "=== Checking for test files ==="
+        ls -la src/test/scala/com/example/*.scala || echo "Test files NOT FOUND!"
+    
+    - name: Compile
+      run: sbt compile
     
     - name: Run tests
       run: sbt test
       continue-on-error: true
+    
+    - name: Check for test reports
+      run: |
+        echo "=== Looking for test report files ==="
+        find . -name "*.xml" -path "*/test-reports/*" 2>/dev/null || echo "No XML test reports found"
+        echo ""
+        echo "=== Contents of target directory ==="
+        ls -R target/ 2>/dev/null || echo "Target directory not found"
     
     - name: Publish Test Report
       uses: dorny/test-reporter@v1
@@ -37,12 +73,24 @@ jobs:
     - name: Create Test Summary Table
       if: always()
       run: |
-        # Install XML parser
-        sudo apt-get update
         sudo apt-get install -y xmlstarlet bc
         
         echo "## 📊 Scala Test Results" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
+        
+        # Check if test reports exist
+        if ! ls target/test-reports/*.xml 1> /dev/null 2>&1; then
+          echo "### ⚠️ No test reports found!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "This usually means:" >> $GITHUB_STEP_SUMMARY
+          echo "- The project structure is incorrect" >> $GITHUB_STEP_SUMMARY
+          echo "- Tests didn't run" >> $GITHUB_STEP_SUMMARY
+          echo "- SBT configuration is missing" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Check the 'Show project structure' step above for details." >> $GITHUB_STEP_SUMMARY
+          exit 0
+        fi
+        
         echo "| Test Suite | Total Tests | ✅ Passed | ❌ Failed | ⏭️ Skipped | ⏱️ Time |" >> $GITHUB_STEP_SUMMARY
         echo "|------------|-------------|-----------|-----------|------------|---------|" >> $GITHUB_STEP_SUMMARY
         
@@ -52,7 +100,6 @@ jobs:
         skipped=0
         total_time=0
         
-        # Find and process test XML files
         for file in target/test-reports/*.xml; do
           if [ -f "$file" ]; then
             suite=$(xmlstarlet sel -t -v "/testsuite/@name" "$file" 2>/dev/null || echo "Unknown")
@@ -87,7 +134,7 @@ jobs:
           echo "### ⚠️ No tests found" >> $GITHUB_STEP_SUMMARY
         fi
     
-    - name: Check if tests failed
+    - name: Fail if tests failed
       run: |
         if find target/test-reports -name "*.xml" -exec grep -q 'failures="[1-9]' {} \; 2>/dev/null; then
           echo "Tests failed!"
@@ -98,3 +145,5 @@ jobs:
           exit 1
         fi
         echo "All tests passed!"
+
+        
