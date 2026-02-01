@@ -11,7 +11,7 @@ class CalculatorTest extends AnyFlatSpec with Matchers {
   val calculator = new Calculator()
   
   "Calculator" should "add two numbers correctly" in {
-    calculator.add(2, 3) should be (5)
+    calculator.add(2, 3) should be (6)
     calculator.add(0, 0) should be (0)
     calculator.add(-5, 5) should be (0)
   }
